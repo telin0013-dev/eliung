@@ -16,6 +16,17 @@
 
 GitHub Pages で配信する場合、公開元に指定できるのはリポジトリのルートか `/docs` だけなので、`dist/index.html` を `docs/index.html` にコピーしてから Settings → Pages で `/docs` を指定してください。
 
+## Android アプリ（APK）
+
+`dist/fe-kamoku-a.apk` をスマホに入れてインストールすると、ホーム画面から起動できます（中身は `dist/index.html` と同じで、オフラインでも動きます）。
+
+- 対応：Android 10 以上
+- Play ストア外のアプリなので、インストール時に「提供元不明のアプリ」の許可が必要です
+- 解答履歴はアプリ内に保存されます（ブラウザ版とは別）
+
+作り直すときは `android/build_apk.sh` を実行します。Android SDK は使わず、Maven Central から apktool（同梱の aapt2）・smali・apksig を取得して組み立てます。
+`android/release.keystore` は更新版を上書きインストールするための署名鍵です。
+
 ## 構成
 
 ```
