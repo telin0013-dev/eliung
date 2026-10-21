@@ -4,7 +4,7 @@ window.STATS = {
   // 本試験 科目A / 修了試験(免除試験)の形式
   format: [
     { k: "科目A（本試験）", v: "四肢択一 60問・90分（採点対象56問、4問は将来用の試行問題）" },
-    { k: "修了試験（免除試験）", v: "本試験の科目Aとほぼ同形式。60問・90分・100点満点中60点以上で合格が一般的（講座ごとに要確認）" },
+    { k: "修了試験（免除試験）", v: "IPA作成の「修了認定に係る試験」。令和5年6月から60問・90分（それ以前は80問・150分）。60点以上で合格が一般的（講座ごとに要確認）" },
     { k: "免除期間", v: "修了認定日から1年間、科目Aが免除" },
     { k: "受験回数", v: "修了試験は2回まで受験可能" },
     { k: "シラバス", v: "Ver.9.2（2026年1月掲載）。下請法→中小受託取引適正化法（取適法）へ差し替え" }
@@ -51,23 +51,23 @@ window.STATS = {
   ]
 };
 
-// 中分類ごとの予測出題数（60問中）。合計 テクノロジ41・マネジメント7・ストラテジ12。
-// 基礎理論9 / コンピュータシステム10 / 技術要素18 はサンプル問題の実数に合わせている。
+// 中分類ごとの予測出題数（60問中）。修了試験14回分（60問形式）の問番号ごとの分野配置から求めた。
+// 問1〜4 基礎理論 … 問56〜60 企業活動・法務。合計 テクノロジ40・マネジメント5・ストラテジ15。
 window.CATS = [
-  { id: "kiso",  g: "T", name: "基礎理論",               pred: 5,  themes: "基数変換・2の補数・論理演算・誤差・待ち行列・AI" },
-  { id: "algo",  g: "T", name: "アルゴリズムとプログラミング", pred: 4,  themes: "スタック/キュー・探索・整列・計算量・再帰" },
-  { id: "comp",  g: "T", name: "コンピュータ構成要素",     pred: 4,  themes: "CPI/MIPS・キャッシュ・割込み・並列化" },
-  { id: "sys",   g: "T", name: "システム構成要素",         pred: 3,  themes: "稼働率・MTBF/MTTR・RAID・クラウド" },
-  { id: "soft",  g: "T", name: "ソフトウェア",             pred: 2,  themes: "ページ置換・スケジューリング・OSS" },
-  { id: "hw",    g: "T", name: "ハードウェア・HI・マルチメディア", pred: 1, themes: "画像/音声データ量・UI設計" },
-  { id: "db",    g: "T", name: "データベース",             pred: 4,  themes: "正規化・SQL・排他制御・障害回復" },
-  { id: "nw",    g: "T", name: "ネットワーク",             pred: 4,  themes: "サブネット・プロトコル・伝送時間" },
-  { id: "sec",   g: "T", name: "セキュリティ",             pred: 10, themes: "暗号・署名・攻撃手法・認証・ゼロトラスト" },
-  { id: "dev",   g: "T", name: "開発技術",                 pred: 4,  themes: "テスト技法・アジャイル・UML・モジュール設計" },
-  { id: "pm",    g: "M", name: "プロジェクトマネジメント", pred: 2,  themes: "クリティカルパス・EVM・WBS" },
-  { id: "sm",    g: "M", name: "サービスマネジメント",     pred: 3,  themes: "SLA・インシデント/問題管理・バックアップ" },
-  { id: "audit", g: "M", name: "システム監査",             pred: 2,  themes: "監査人の独立性・内部統制" },
-  { id: "sysst", g: "S", name: "システム戦略・企画",       pred: 3,  themes: "BPR・RPA・非機能要件・RFP・生成AI" },
-  { id: "biz",   g: "S", name: "経営戦略・技術戦略",       pred: 5,  themes: "SWOT・PPM・損益分岐点・BSC・IoT" },
-  { id: "law",   g: "S", name: "企業活動・法務",           pred: 4,  themes: "著作権・派遣/請負・個人情報・取適法・財務指標" }
+  { id: "kiso",  g: "T", name: "基礎理論",               slot: "1〜4",   pred: 4, themes: "浮動小数点・確率/統計・AI・待ち行列・数値計算" },
+  { id: "algo",  g: "T", name: "アルゴリズムとプログラミング", slot: "5〜7", pred: 3, themes: "木構造・探索・整列・XML/Web言語・流れ図" },
+  { id: "comp",  g: "T", name: "コンピュータ構成要素",     slot: "8〜10",  pred: 3, themes: "MIPS/CPI・割込み・キャッシュ・記憶装置" },
+  { id: "sys",   g: "T", name: "システム構成要素",         slot: "11〜12", pred: 2, themes: "稼働率・信頼性設計・RAID・性能指標" },
+  { id: "soft",  g: "T", name: "ソフトウェア",             slot: "13〜15", pred: 3, themes: "仮想記憶・コンパイラ・OSS・再入可能" },
+  { id: "hw",    g: "T", name: "ハードウェア・HI・マルチメディア", slot: "16〜17", pred: 2, themes: "論理回路・センサ/LED・CG・アクセシビリティ" },
+  { id: "db",    g: "T", name: "データベース",             slot: "18〜22", pred: 5, themes: "正規化・SQL・ビュー・障害回復・NoSQL" },
+  { id: "nw",    g: "T", name: "ネットワーク",             slot: "23〜26", pred: 4, themes: "プロトコル・OSI・サブネット・伝送時間・SDN" },
+  { id: "sec",   g: "T", name: "セキュリティ",             slot: "27〜33", pred: 7, themes: "暗号・署名/PKI・攻撃手法・WAF/EDR・認証" },
+  { id: "dev",   g: "T", name: "開発技術",                 slot: "34〜40", pred: 7, themes: "UML・オブジェクト指向・テスト・スクラム/XP" },
+  { id: "pm",    g: "M", name: "プロジェクトマネジメント", slot: "41〜42", pred: 2, themes: "アローダイアグラム・EVM・見積り・リスク対応" },
+  { id: "sm",    g: "M", name: "サービスマネジメント",     slot: "43〜44", pred: 2, themes: "インシデント/問題管理・可用性・ファシリティ" },
+  { id: "audit", g: "M", name: "システム監査",             slot: "45",     pred: 1, themes: "監査人の独立性・予備調査・監査証拠" },
+  { id: "sysst", g: "S", name: "システム戦略・企画",       slot: "46〜48", pred: 2, themes: "SOA/EA・BPM・要件定義・投資評価" },
+  { id: "biz",   g: "S", name: "経営戦略・技術戦略",       slot: "47〜55", pred: 8, themes: "PPM・BSC・技術戦略・IoT/フィンテック・ERP" },
+  { id: "law",   g: "S", name: "企業活動・法務",           slot: "56〜60", pred: 5, themes: "会計・在庫/OR・QC手法・著作権/特許・組織" }
 ];

@@ -184,6 +184,23 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
 .callout { background: var(--hi-soft); border-radius: var(--r); padding: 12px 14px; font-size: 13px }
 .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 0 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+.qtext { white-space: pre-line }
+.tag.src { background: var(--ok-soft); color: var(--ok); font-weight: 700 }
+.act-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.act-pair .act { grid-template-columns: auto 1fr; padding: 12px }
+.act-pair .act .go { display: none }
+.find { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14px }
+.find b { color: var(--blue) }
+.rep { display: grid; gap: 6px }
+.rep-row { display: grid; grid-template-columns: 3.4em 1fr 4.6em; gap: 8px; align-items: center; font-size: 12px }
+.rep-row .tr { height: 12px; background: var(--blue-soft); border-radius: 3px; overflow: hidden; display: flex }
+.rep-row .tr i { display: block; height: 100%; background: var(--blue) }
+.rep-row .tr i.new { background: var(--hi) }
+.rep-row .v { font-family: var(--f-num); text-align: right; white-space: nowrap }
+.sub-h { font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .04em; margin: 0 }
+details.more > summary { cursor: pointer; font-weight: 700; font-size: 14px }
+details.more[open] > summary { margin-bottom: 12px }
+@media (max-width: 380px) { .act-pair { grid-template-columns: 1fr } }
 </style>
 
 <header class="top">
@@ -207,15 +224,19 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
 
         <div class="actions">
           <button class="act" id="resume" type="button" hidden><span class="ic">▶</span><span><b>続きから再開</b><span class="sub" id="resume-sub"></span></span><span class="go">›</span></button>
-          <button class="act primary" id="go-mock" type="button"><span class="ic">60</span><span><b>予測模試 60問・90分</b><span class="sub">本番と同じ問題数。予測配分どおりに出題し、60%で合格判定</span></span><span class="go">›</span></button>
-          <button class="act" id="go-hot" type="button"><span class="ic">★</span><span><b>最頻出だけ 10問</b><span class="sub">頻出度★★★のテーマから即答練習</span></span><span class="go">›</span></button>
+          <button class="act primary" id="go-mock" type="button"><span class="ic">60</span><span><b>予測模試 60問・90分</b><span class="sub">本番の分野配置どおりに，出題回数の多い過去問と最新回の問題を中心に出題</span></span><span class="go">›</span></button>
+          <div class="act-pair">
+            <button class="act" id="go-r87" type="button"><span class="ic">本</span><span><b>R8.7 本番再現</b><span class="sub">直近の修了試験60問</span></span></button>
+            <button class="act" id="go-r86" type="button"><span class="ic">本</span><span><b>R8.6 本番再現</b><span class="sub">その前の回の60問</span></span></button>
+          </div>
+          <button class="act" id="go-hot" type="button"><span class="ic">★</span><span><b>頻出過去問 10問</b><span class="sub" id="hot-sub">3回以上出題された過去問から</span></span><span class="go">›</span></button>
           <button class="act" id="go-weak" type="button"><span class="ic">復</span><span><b>苦手を復習</b><span class="sub" id="weak-sub">間違えた問題・未正解の問題を優先</span></span><span class="go">›</span></button>
-          <button class="act" id="go-rand" type="button"><span class="ic">10</span><span><b>ランダム 10問</b><span class="sub">すきま時間に全分野から</span></span><span class="go">›</span></button>
+          <button class="act" id="go-rand" type="button"><span class="ic">10</span><span><b>ランダム 10問</b><span class="sub">過去問と予想問題の全体から</span></span><span class="go">›</span></button>
         </div>
 
         <div class="panel">
-          <div class="sec-title"><h2>分野別 予測出題数と正答率</h2><span>タップで分野別練習</span></div>
-          <div class="legend" style="margin:8px 0 4px"><span><i style="background:var(--blue)"></i>60問中の予測出題数</span><span><i style="background:var(--ok)"></i>あなたの正答率</span></div>
+          <div class="sec-title"><h2>分野別 出題数と正答率</h2><span>タップで分野別練習</span></div>
+          <div class="legend" style="margin:8px 0 4px"><span><i style="background:var(--blue)"></i>60問中の出題数（問番号）</span><span><i style="background:var(--ok)"></i>あなたの正答率</span></div>
           <div class="cat-list" id="h-cats"></div>
         </div>
       </div>
@@ -226,15 +247,21 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
       <div class="wrap">
         <div class="sec-title"><h2>練習メニューを組む</h2><span id="p-count"></span></div>
         <div class="panel wrap">
+          <div class="field"><span class="lbl">問題の種類</span>
+            <div class="chips" id="p-kind">
+              <button class="chip" type="button" data-k="past" aria-pressed="true">修了試験の過去問</button>
+              <button class="chip" type="button" data-k="orig" aria-pressed="true">予想問題（オリジナル）</button>
+            </div>
+          </div>
           <div class="field"><span class="lbl">分野（複数選択可）</span>
             <div class="row"><button class="chip" id="p-all" type="button" aria-pressed="false">すべて選択</button><button class="chip" id="p-none" type="button" aria-pressed="false">選択解除</button></div>
             <div class="chips" id="p-cats"></div>
           </div>
-          <div class="field"><span class="lbl">頻出度</span>
+          <div class="field"><span class="lbl">頻出度（過去問は出題回数）</span>
             <div class="chips" id="p-freq">
-              <button class="chip" type="button" data-f="3" aria-pressed="true">★★★ 最頻出</button>
-              <button class="chip" type="button" data-f="2" aria-pressed="true">★★ 頻出</button>
-              <button class="chip" type="button" data-f="1" aria-pressed="true">★ 要注意</button>
+              <button class="chip" type="button" data-f="3" aria-pressed="true">★★★ 3回以上</button>
+              <button class="chip" type="button" data-f="2" aria-pressed="true">★★ 2回</button>
+              <button class="chip" type="button" data-f="1" aria-pressed="true">★ 1回・新問</button>
             </div>
           </div>
           <div class="field"><span class="lbl">出題数</span>
@@ -280,38 +307,43 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     <!-- 分析 -->
     <section class="view" id="v-analysis" hidden>
       <div class="wrap">
-        <div class="sec-title"><h2>出題統計と予測</h2><span id="a-upd"></span></div>
+        <div class="sec-title"><h2>修了試験21回分の分析</h2><span>令和3年7月〜令和8年7月</span></div>
         <div class="panel wrap">
-          <h3 style="font-size:15px">試験の形式</h3>
-          <dl class="kv" id="a-format"></dl>
+          <h3 style="font-size:15px">分かったこと</h3>
+          <ol class="find" id="a-find"></ol>
         </div>
         <div class="panel wrap">
-          <h3 style="font-size:15px">大分類の比率</h3>
-          <p class="lead">IPA公開のサンプル問題60問＋令和5〜7年度公開問題（各20問）の計120問と、科目A 60問の一般的な内訳</p>
-          <div id="a-stack"></div>
+          <h3 style="font-size:15px">過去の修了試験からの再出題率</h3>
+          <p class="lead">各回の問題のうち，それ以前の修了試験で出た問題の割合。橙は令和8年の大きな変化</p>
+          <div class="rep" id="a-rep"></div>
         </div>
         <div class="panel wrap">
-          <h3 style="font-size:15px">サンプル問題60問の中分類グループ</h3>
-          <div class="hbars" id="a-sample"></div>
-        </div>
-        <div class="panel wrap">
-          <h3 style="font-size:15px">過去問アーカイブの収録数（H21〜R8）</h3>
-          <p class="lead">科目Aはプール問題からの出題で、過去問と同じ選択肢が再登場しやすい。収録数が多い分野ほど繰り返し出ている</p>
-          <div class="hbars" id="a-archive"></div>
-        </div>
-        <div class="panel wrap">
-          <h3 style="font-size:15px">予測：60問の中分類別出題数</h3>
-          <p class="lead">上の統計から組み立てた本アプリの予測。模試はこの配分で出題する</p>
+          <h3 style="font-size:15px">予測：問番号ごとの出題分野（60問）</h3>
+          <p class="lead">60問形式の14回すべてで，問番号と分野の対応がほぼ固定されている。次回もこの配置で出ると予測</p>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>中分類</th><th class="n">予測</th><th>狙われるテーマ</th><th class="n">収録</th></tr></thead>
+            <thead><tr><th>問番号</th><th>中分類</th><th class="n">問数</th><th>よく出るテーマ</th><th class="n">収録</th></tr></thead>
             <tbody id="a-pred"></tbody>
           </table></div>
         </div>
-        <div class="callout">予測は公開統計にもとづく推定で、IPAの公式な出題予告ではありません。問題は出題傾向に合わせて作成したオリジナル問題です。IPAの公開問題そのもので仕上げの確認もしてください。</div>
         <div class="panel wrap">
-          <h3 style="font-size:15px">出典</h3>
-          <ol class="src" id="a-src"></ol>
+          <h3 style="font-size:15px">テーマ別の出題回数（21回・1,382問）</h3>
+          <p class="lead">問題文のキーワードで数えた目安。右の数字は21回中何回の試験に出たか</p>
+          <div class="hbars" id="a-themes"></div>
         </div>
+        <div class="callout">次回が「過去の修了試験からの再出題」型か「令和8年の新問」型かは公表されていません。両方に備えて，頻出過去問と R8 の問題を中心に解いてください。過去問の解答・解説は IPA の公式解答ではなく，本アプリで作成したものです。</div>
+        <details class="more panel">
+          <summary>参考：本試験（科目A）の公開データ</summary>
+          <div class="wrap">
+            <dl class="kv" id="a-format"></dl>
+            <div id="a-stack"></div>
+            <p class="sub-h">サンプル問題60問の中分類グループ</p>
+            <div class="hbars" id="a-sample"></div>
+            <p class="sub-h">過去問アーカイブの収録数（H21〜R8）</p>
+            <div class="hbars" id="a-archive"></div>
+            <p class="sub-h">出典</p>
+            <ol class="src" id="a-src"></ol>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -350,12 +382,19 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
 </nav>
 
 <!-- INLINE:stats.js -->
+<!-- INLINE:menjo_stats.js -->
 <!-- INLINE:questions.js -->
+<!-- INLINE:kakomon.js -->
 <script>
 (function () {
   "use strict";
-  var Q = window.QUESTIONS, CATS = window.CATS, S = window.STATS;
+  var CATS = window.CATS, S = window.STATS, M = window.MENJO;
   var CAT = {}; CATS.forEach(function (c) { CAT[c.id] = c; });
+  // 過去問（ア〜エの元の順，a が正解）と予想問題（o[0] が正解）を同じ形にそろえる
+  var PAST = window.KAKOMON.map(function (q) { var x = Object.assign({ kind: "past" }, q); x.f = q.n >= 3 ? 3 : q.n === 2 ? 2 : 1; return x; });
+  var ORIG = window.QUESTIONS.map(function (q) { return Object.assign({ kind: "orig", a: 0 }, q); });
+  var ALL = PAST.concat(ORIG);
+  var LATEST = "20260614";
   var GNAME = { T: "テクノロジ", M: "マネジメント", S: "ストラテジ" };
   var KANA = ["ア", "イ", "ウ", "エ"];
   var KEY = "fe-kamoku-a-v1";
@@ -382,9 +421,11 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
   }
   function catStats(cid) {
     var n = 0, ok = 0;
-    Q.forEach(function (q) { if (q.c === cid && store.q[q.id]) { n += store.q[q.id].n; ok += store.q[q.id].ok; } });
+    ALL.forEach(function (q) { if (q.c === cid && store.q[q.id]) { n += store.q[q.id].n; ok += store.q[q.id].ok; } });
     return { n: n, ok: ok };
   }
+  function isOk(x) { return x.pick !== null && x.perm[x.pick] === x.q.a && !x.skipped; }
+  function catOrder(a, b) { return CATS.indexOf(CAT[a.c]) - CATS.indexOf(CAT[b.c]); }
 
   // ── 画面切替 ──
   var VIEWS = ["home", "practice", "quiz", "result", "analysis", "records"];
@@ -401,55 +442,64 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     window.scrollTo(0, 0);
   }
   document.querySelectorAll(".tab").forEach(function (t) {
-    t.addEventListener("click", function () {
-      show(t.dataset.view);
-    });
+    t.addEventListener("click", function () { show(t.dataset.view); });
   });
 
   // ── ホーム ──
   function renderHome() {
     var answered = Object.keys(store.q).length, n = 0, ok = 0;
     Object.keys(store.q).forEach(function (k) { n += store.q[k].n; ok += store.q[k].ok; });
-    $("h-done").innerHTML = answered + "<small> / " + Q.length + "</small>";
+    $("h-done").innerHTML = answered + "<small> / " + ALL.length + "</small>";
     $("h-acc").innerHTML = n ? Math.round(ok / n * 100) + "<small>%</small>" : "—";
     var best = store.hist.filter(function (h) { return h.mode === "mock"; }).reduce(function (m, h) { return Math.max(m, h.pct); }, -1);
     $("h-best").innerHTML = best >= 0 ? best + "<small>点</small>" : "—";
-    var weakN = Q.filter(function (q) { var r = store.q[q.id]; return r && r.last === false; }).length;
     var live = session && !session.done;
     $("resume").hidden = !live;
     if (live) $("resume-sub").textContent = session.label + "・問" + (session.i + 1) + " / " + session.items.length + (session.mode === "mock" ? "（タイマーは進行中）" : "");
+    $("hot-sub").textContent = "3回以上出題された過去問 " + PAST.filter(function (q) { return q.f === 3; }).length + "問から";
+    var weakN = ALL.filter(function (q) { var r = store.q[q.id]; return r && r.last === false; }).length;
     $("weak-sub").textContent = weakN ? "直近で間違えた問題 " + weakN + "問を中心に出題" : "まだ間違えた問題はありません。未解答の問題から出題";
     var maxPred = Math.max.apply(null, CATS.map(function (c) { return c.pred; }));
     $("h-cats").innerHTML = CATS.map(function (c) {
       var s = catStats(c.id), acc = s.n ? Math.round(s.ok / s.n * 100) : null;
       return '<button class="cat-row" type="button" data-cat="' + c.id + '">' +
-        '<span class="nm"><span class="g">' + c.g + '</span>' + esc(c.name) + '</span>' +
+        '<span class="nm"><span class="g">問' + c.slot + '</span>' + esc(c.name) + '</span>' +
         '<span class="pr"><b>' + c.pred + '</b>問 · ' + (acc === null ? "未" : acc + "%") + '</span>' +
         '<span class="bars"><span class="bar"><i style="width:' + (c.pred / maxPred * 100) + '%"></i></span>' +
         '<span class="bar acc' + (acc !== null && acc < 60 ? " lowacc" : "") + '"><i style="width:' + (acc || 0) + '%"></i></span></span></button>';
     }).join("");
     $("h-cats").querySelectorAll(".cat-row").forEach(function (b) {
       b.addEventListener("click", function () {
-        var list = shuffle(Q.filter(function (q) { return q.c === b.dataset.cat; }));
-        start("practice", list, CAT[b.dataset.cat].name);
+        var list = shuffle(ALL.filter(function (q) { return q.c === b.dataset.cat; })).sort(function (x, y) { return y.f - x.f; }).slice(0, 15);
+        start("practice", shuffle(list), CAT[b.dataset.cat].name);
       });
     });
   }
   $("resume").addEventListener("click", function () { show("quiz"); renderQ(); });
   $("go-mock").addEventListener("click", function () { start("mock", buildMock(), "予測模試"); });
-  $("go-hot").addEventListener("click", function () { start("practice", shuffle(Q.filter(function (q) { return q.f === 3; })).slice(0, 10), "最頻出10問"); });
-  $("go-rand").addEventListener("click", function () { start("practice", shuffle(Q).slice(0, 10), "ランダム10問"); });
+  function replay(exam, label) {
+    var list = PAST.filter(function (q) { return q.exam === exam; }).sort(function (a, b) { return a.no - b.no; });
+    start("mock", list, label, true);
+  }
+  $("go-r87").addEventListener("click", function () { replay("20260726", "R8.7 本番再現"); });
+  $("go-r86").addEventListener("click", function () { replay("20260614", "R8.6 本番再現"); });
+  $("go-hot").addEventListener("click", function () { start("practice", shuffle(PAST.filter(function (q) { return q.f === 3; })).slice(0, 10), "頻出過去問"); });
+  $("go-rand").addEventListener("click", function () { start("practice", shuffle(ALL).slice(0, 10), "ランダム10問"); });
   $("go-weak").addEventListener("click", function () {
-    var list = shuffle(Q).sort(function (a, b) { return weakScore(b) - weakScore(a); }).slice(0, 10);
+    var list = shuffle(ALL).sort(function (a, b) { return weakScore(b) - weakScore(a); }).slice(0, 10);
     start("practice", list, "苦手復習");
   });
 
-  // 予測配分どおりに60問を抽出（頻出度が高いほど選ばれやすい）
+  // 予測模試：分野ごとの出題数どおりに，出題回数の多い過去問・最新回の問題を優先して選ぶ
+  function mockScore(q) {
+    if (q.kind === "orig") return q.f * 0.5 + Math.random();
+    return q.n * 1.5 + (q.exam >= LATEST ? 3 : 0) + Math.random() * 2;
+  }
   function buildMock() {
     var out = [];
     CATS.forEach(function (c) {
-      var pool = Q.filter(function (q) { return q.c === c.id; })
-        .map(function (q) { return { q: q, k: Math.pow(Math.random(), 1 / q.f) }; })
+      var pool = ALL.filter(function (q) { return q.c === c.id; })
+        .map(function (q) { return { q: q, k: mockScore(q) }; })
         .sort(function (a, b) { return b.k - a.k; })
         .map(function (x) { return x.q; });
       out = out.concat(shuffle(pool.slice(0, c.pred)));
@@ -458,9 +508,9 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
   }
 
   // ── 練習設定 ──
-  var pSel = { cats: {}, freq: { 1: true, 2: true, 3: true }, n: 10, order: "rand" };
+  var pSel = { kinds: { past: true, orig: true }, cats: {}, freq: { 1: true, 2: true, 3: true }, n: 10, order: "rand" };
   CATS.forEach(function (c) { pSel.cats[c.id] = true; });
-  function pFiltered() { return Q.filter(function (q) { return pSel.cats[q.c] && pSel.freq[q.f]; }); }
+  function pFiltered() { return ALL.filter(function (q) { return pSel.kinds[q.kind] && pSel.cats[q.c] && pSel.freq[q.f]; }); }
   function renderPractice() {
     $("p-cats").innerHTML = CATS.map(function (c) {
       return '<button class="chip" type="button" data-c="' + c.id + '" aria-pressed="' + !!pSel.cats[c.id] + '">' + esc(c.name) + '</button>';
@@ -482,30 +532,35 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
       });
     });
   }
+  function toggles(groupId, attr, obj) {
+    $(groupId).querySelectorAll(".chip").forEach(function (b) {
+      b.addEventListener("click", function () {
+        obj[b.dataset[attr]] = !obj[b.dataset[attr]];
+        b.setAttribute("aria-pressed", String(obj[b.dataset[attr]]));
+        renderPractice();
+      });
+    });
+  }
   single("p-n", "n", function (v) { pSel.n = +v; });
   single("p-order", "o", function (v) { pSel.order = v; });
-  $("p-freq").querySelectorAll(".chip").forEach(function (b) {
-    b.addEventListener("click", function () {
-      pSel.freq[b.dataset.f] = !pSel.freq[b.dataset.f];
-      b.setAttribute("aria-pressed", String(pSel.freq[b.dataset.f]));
-      renderPractice();
-    });
-  });
+  toggles("p-freq", "f", pSel.freq);
+  toggles("p-kind", "k", pSel.kinds);
   $("p-start").addEventListener("click", function () {
     var list = pFiltered();
     if (pSel.order === "rand") list = shuffle(list);
     else if (pSel.order === "weak") list = shuffle(list).sort(function (a, b) { return weakScore(b) - weakScore(a); });
+    else list = list.slice().sort(catOrder);
     if (pSel.n) list = list.slice(0, pSel.n);
     start("practice", list, "カスタム練習");
   });
 
   // ── 出題セッション ──
   var session = null, timerId = null;
-  function start(mode, list, label) {
+  function start(mode, list, label, fixedOrder) {
     if (!list.length) return;
     session = {
       mode: mode, label: label, i: 0, done: false,
-      items: list.map(function (q) { return { q: q, perm: shuffle([0, 1, 2, 3]), pick: null }; }),
+      items: list.map(function (q) { return { q: q, perm: fixedOrder ? [0, 1, 2, 3] : shuffle([0, 1, 2, 3]), pick: null }; }),
       endAt: mode === "mock" ? Date.now() + 90 * 60 * 1000 : null
     };
     $("q-map").hidden = true; $("q-map-btn").setAttribute("aria-pressed", "false");
@@ -525,18 +580,28 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     if (left <= 0 && !session.done) finish();
   }
 
+  function metaTags(q) {
+    var c = CAT[q.c];
+    var tags = '<span class="tag">' + GNAME[c.g] + " · " + esc(c.name) + '</span><span class="tag">' + esc(q.t) + '</span>';
+    if (q.kind === "past") {
+      tags += '<span class="tag src">' + esc(q.src) + '</span>';
+      tags += '<span class="tag' + (q.n >= 3 ? " hot" : "") + '">' + (q.n > 1 ? "過去" + q.n + "回出題" : (q.exam >= LATEST ? "R8の新問" : "出題1回")) + '</span>';
+    } else {
+      tags += '<span class="tag">予想問題</span><span class="tag' + (q.f === 3 ? " hot" : "") + '">頻出 ' + stars(q.f) + '</span>';
+    }
+    return tags;
+  }
   function renderQ() {
-    var s = session, it = s.items[s.i], q = it.q, c = CAT[q.c];
+    var s = session, it = s.items[s.i], q = it.q;
     var answered = s.items.filter(function (x) { return x.pick !== null; }).length;
     $("q-no").innerHTML = s.label + "　問 <b>" + (s.i + 1) + "</b> / " + s.items.length;
     $("q-prog").style.width = (answered / s.items.length * 100) + "%";
-    $("q-meta").innerHTML = '<span class="tag">' + GNAME[c.g] + " · " + esc(c.name) + '</span><span class="tag">' + esc(q.t) + '</span>' +
-      '<span class="tag' + (q.f === 3 ? " hot" : "") + '">頻出 ' + stars(q.f) + '</span>';
+    $("q-meta").innerHTML = metaTags(q);
     $("q-text").textContent = q.q;
     var reveal = s.mode === "practice" && it.pick !== null;
     $("q-choices").innerHTML = it.perm.map(function (oi, di) {
       var cls = "choice";
-      if (reveal) { if (oi === 0) cls += " correct"; else if (di === it.pick && !it.skipped) cls += " wrong"; }
+      if (reveal) { if (oi === q.a) cls += " correct"; else if (di === it.pick && !it.skipped) cls += " wrong"; }
       else if (di === it.pick) cls += " picked";
       return '<li><button class="' + cls + '" type="button" data-d="' + di + '"' + (reveal ? " disabled" : "") + '>' +
         '<span class="bubble">' + KANA[di] + '</span><span class="txt">' + esc(q.o[oi]) + '</span></button></li>';
@@ -546,10 +611,10 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     });
     var fb = $("q-feedback");
     if (reveal) {
-      var ok = it.perm[it.pick] === 0, ci = it.perm.indexOf(0);
+      var ok = isOk(it), ci = it.perm.indexOf(q.a);
       fb.hidden = false;
       fb.innerHTML = '<div class="verdict ' + (ok ? "ok" : "ng") + '">' + (ok ? "○ 正解" : (it.skipped ? "解答　" : "× 不正解　") + "正解は " + KANA[ci]) + '</div>' +
-        '<p class="explain">' + esc(q.e) + '</p>';
+        '<p class="explain">' + esc(q.e) + '</p>' + (q.kind === "past" && q.n > 1 ? '<p class="small-note">出題回：' + esc(q.past.join("，")) + '</p>' : "");
     } else { fb.hidden = true; fb.innerHTML = ""; }
     renderNav(); renderGrid();
     $("q-confirm").innerHTML = "";
@@ -559,7 +624,7 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     if (s.done) return;
     if (s.mode === "practice") {
       if (it.pick !== null) return;
-      it.pick = d; record(it.q.id, it.perm[d] === 0); save();
+      it.pick = d; record(it.q.id, isOk(it)); save();
     } else { it.pick = d; }
     renderQ();
   }
@@ -577,7 +642,8 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     if ($("n-prev")) $("n-prev").addEventListener("click", function () { s.i--; renderQ(); window.scrollTo(0, 0); });
     if ($("n-next")) $("n-next").addEventListener("click", function () { s.i++; renderQ(); window.scrollTo(0, 0); });
     if ($("n-skip")) $("n-skip").addEventListener("click", function () {
-      var it = s.items[s.i]; it.pick = it.perm.indexOf(0) === 0 ? 1 : 0; // 不正解扱いで解答表示
+      var it = s.items[s.i], ci = it.perm.indexOf(it.q.a);
+      it.pick = ci === 0 ? 1 : 0; // 不正解の位置を入れて解答を表示する
       it.skipped = true; record(it.q.id, false); save(); renderQ();
     });
     if ($("n-submit")) $("n-submit").addEventListener("click", function () { s.mode === "mock" ? askSubmit() : finish(); });
@@ -594,7 +660,7 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     var s = session;
     $("q-grid").innerHTML = s.items.map(function (x, i) {
       var cls = i === s.i ? "cur" : "";
-      if (x.pick !== null) cls += s.mode === "practice" ? (x.perm[x.pick] === 0 ? " ok" : " ng") : " done";
+      if (x.pick !== null) cls += s.mode === "practice" ? (isOk(x) ? " ok" : " ng") : " done";
       return '<button type="button" class="' + cls + '" data-i="' + i + '">' + (i + 1) + '</button>';
     }).join("");
     $("q-grid").querySelectorAll("button").forEach(function (b) {
@@ -606,7 +672,7 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
   });
   $("q-quit").addEventListener("click", function () {
     if (session && session.mode === "mock" && !session.done) {
-      $("q-confirm").innerHTML = '<div class="confirm"><div>模試を中断すると、この回の解答は採点されません。</div><div class="row">' +
+      $("q-confirm").innerHTML = '<div class="confirm"><div>模試を中断すると，この回の解答は採点されません。</div><div class="row">' +
         '<button class="btn warn" type="button" id="x-yes">中断する</button><button class="btn ghost" type="button" id="x-no">続ける</button></div></div>';
       $("x-yes").addEventListener("click", function () { session.done = true; stopTimer(); $("timer").hidden = true; show("home"); });
       $("x-no").addEventListener("click", function () { $("q-confirm").innerHTML = ""; });
@@ -619,8 +685,8 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
   function finish() {
     var s = session; if (s.done) return;
     s.done = true; stopTimer(); $("timer").hidden = true;
-    if (s.mode === "mock") s.items.forEach(function (x) { record(x.q.id, x.pick !== null && x.perm[x.pick] === 0); });
-    var total = s.items.length, ok = s.items.filter(function (x) { return x.pick !== null && x.perm[x.pick] === 0 && !x.skipped; }).length;
+    if (s.mode === "mock") s.items.forEach(function (x) { record(x.q.id, isOk(x)); });
+    var total = s.items.length, ok = s.items.filter(isOk).length;
     var pct = Math.round(ok / total * 100);
     store.hist.unshift({ at: Date.now(), mode: s.mode, label: s.label, ok: ok, total: total, pct: pct });
     store.hist = store.hist.slice(0, 100); save();
@@ -631,20 +697,21 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     var pass = pct >= 60, byCat = {};
     s.items.forEach(function (x) {
       var b = byCat[x.q.c] || (byCat[x.q.c] = { n: 0, ok: 0 });
-      b.n++; if (x.pick !== null && x.perm[x.pick] === 0 && !x.skipped) b.ok++;
+      b.n++; if (isOk(x)) b.ok++;
     });
     var rows = CATS.filter(function (c) { return byCat[c.id]; }).map(function (c) {
       var b = byCat[c.id];
       return "<tr><td>" + esc(c.name) + '</td><td class="n">' + b.ok + " / " + b.n + '</td><td class="n">' + Math.round(b.ok / b.n * 100) + "%</td></tr>";
     }).join("");
-    var wrong = s.items.filter(function (x) { return !(x.pick !== null && x.perm[x.pick] === 0 && !x.skipped); });
+    var wrong = s.items.filter(function (x) { return !isOk(x); });
     var rev = s.items.map(function (x, i) {
-      var good = x.pick !== null && x.perm[x.pick] === 0 && !x.skipped, ci = x.perm.indexOf(0);
-      return '<details' + (good ? "" : " open") + '><summary><span class="mk ' + (good ? "ok" : "ng") + '">' + (good ? "○" : "×") + "</span>問" + (i + 1) + "　" + esc(x.q.q) + "</summary><div>" +
-        "<div>正解：<b>" + KANA[ci] + "　" + esc(x.q.o[0]) + "</b></div>" +
-        (x.pick !== null && !good && !x.skipped ? "<div>あなたの解答：" + KANA[x.pick] + "　" + esc(x.q.o[x.perm[x.pick]]) + "</div>" : "") +
+      var good = isOk(x), q = x.q, ci = x.perm.indexOf(q.a);
+      return '<details' + (good ? "" : " open") + '><summary><span class="mk ' + (good ? "ok" : "ng") + '">' + (good ? "○" : "×") + "</span>問" + (i + 1) + "　" + esc(q.q.split("\n")[0]) + "</summary><div>" +
+        (q.kind === "past" ? '<div class="small-note">出典：' + esc(q.src) + (q.n > 1 ? "（出題 " + esc(q.past.join("，")) + "）" : "") + "</div>" : '<div class="small-note">予想問題</div>') +
+        "<div>正解：<b>" + KANA[ci] + "　" + esc(q.o[q.a]) + "</b></div>" +
+        (x.pick !== null && !good && !x.skipped ? "<div>あなたの解答：" + KANA[x.pick] + "　" + esc(q.o[x.perm[x.pick]]) + "</div>" : "") +
         (x.pick === null ? "<div>未解答</div>" : "") +
-        '<p class="explain">' + esc(x.q.e) + "</p></div></details>";
+        '<p class="explain">' + esc(q.e) + "</p></div></details>";
     }).join("");
     $("r-body").innerHTML =
       '<div class="panel result-hero"><div class="small-note">' + esc(s.label) + "</div>" +
@@ -661,7 +728,31 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
 
   // ── 分析 ──
   function renderAnalysis() {
-    $("a-upd").textContent = "データ確認日 " + S.updated;
+    var ex = M.exams, mid = ex.filter(function (e) { return e.exam >= "20240609" && e.exam <= "20260125"; });
+    var midRate = Math.round(mid.reduce(function (a, e) { return a + e.rep / e.n; }, 0) / mid.length * 100);
+    var r8 = ex.filter(function (e) { return e.exam >= LATEST; });
+    var r8Rate = Math.round(r8.reduce(function (a, e) { return a + e.rep / e.n; }, 0) / r8.length * 100);
+    $("a-find").innerHTML = [
+      "21回分 <b>" + M.questions.toLocaleString() + "問</b>（読み取れた分）を集計。異なる問題は " + M.unique + "問で，そのうち <b>" + M.repeated + "問</b> が2回以上出題されていた。",
+      "令和6年6月〜令和8年1月の各回は，問題の <b>約" + midRate + "%</b> がそれ以前の修了試験と同じ問題だった（同じ問番号での再出題も多い）。",
+      "ところが令和8年6月・7月は再出題が <b>約" + r8Rate + "%</b> に急減し，ほぼ新しい問題に入れ替わった。",
+      "60問形式になった令和5年6月以降，<b>問番号ごとの分野は毎回同じ</b>（問1〜4 基礎理論，問27〜33 セキュリティ など）。分野別の出題数はほぼ確実に予測できる。"
+    ].map(function (t) { return "<li>" + t + "</li>"; }).join("");
+    $("a-rep").innerHTML = ex.map(function (e) {
+      var pctRep = Math.round(e.rep / e.n * 100);
+      return '<div class="rep-row"><span class="num">' + e.label + '</span><span class="tr"><i class="' + (e.exam >= LATEST ? "new" : "") + '" style="width:' + pctRep + '%"></i></span><span class="v">' + pctRep + "%・" + e.total + "問</span></div>";
+    }).join("");
+    $("a-pred").innerHTML = CATS.map(function (c) {
+      var pool = ALL.filter(function (q) { return q.c === c.id; });
+      var past = pool.filter(function (q) { return q.kind === "past"; }).length;
+      return "<tr><td class=\"num\">" + c.slot + "</td><td><b>" + esc(c.name) + '</b><br><span class="small-note">' + GNAME[c.g] + '系</span></td><td class="n"><b>' + c.pred + '</b></td><td>' + esc(c.themes) + '</td><td class="n">' + past + "+" + (pool.length - past) + "</td></tr>";
+    }).join("") + '<tr><td></td><td><b>合計</b></td><td class="n"><b>60</b></td><td>テクノロジ40・マネジメント5・ストラテジ15</td><td class="n">' + PAST.length + "+" + ORIG.length + "</td></tr>";
+    var th = M.themes.slice(0, 20), mx = th[0].n;
+    $("a-themes").innerHTML = th.map(function (x) {
+      return '<div class="hbar"><span class="k">' + esc(x.k) + '</span><span class="tr alt"><i style="width:' + (x.n / mx * 100) + '%"></i></span><span class="v">' + x.n + "問・" + x.exams + "回</span></div>";
+    }).join("");
+
+    // 参考：本試験の公開データ
     $("a-format").innerHTML = S.format.map(function (x) { return "<div><dt>" + esc(x.k) + "</dt><dd>" + esc(x.v) + "</dd></div>"; }).join("");
     function stack(title, arr) {
       var tot = arr.reduce(function (a, x) { return a + x.n; }, 0), cl = ["t", "m", "s"];
@@ -671,7 +762,8 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
           return '<span><i style="background:var(--' + ["blue", "ok", "hi"][i] + ')"></i>' + esc(x.k) + " " + Math.round(x.n / tot * 100) + "%</span>";
         }).join("") + "</div></div>";
     }
-    $("a-stack").innerHTML = '<div class="wrap" style="gap:14px">' + stack("公開問題＋サンプル 120問", S.public120) + stack("科目A 60問の一般的な内訳", S.standard60) + "</div>";
+    $("a-stack").innerHTML = '<div class="wrap" style="gap:14px">' + stack("修了試験 60問の配置", [{ k: "テクノロジ系", n: 40 }, { k: "マネジメント系", n: 5 }, { k: "ストラテジ系", n: 15 }]) +
+      stack("本試験：公開問題＋サンプル 120問", S.public120) + stack("本試験：科目A 60問の一般的な内訳", S.standard60) + "</div>";
     function hbars(arr, alt, unit) {
       var mx = Math.max.apply(null, arr.map(function (x) { return x.n; }));
       return arr.map(function (x) {
@@ -681,10 +773,6 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
     }
     $("a-sample").innerHTML = hbars(S.sample60, false, "問");
     $("a-archive").innerHTML = hbars(S.archive, true, "問");
-    $("a-pred").innerHTML = CATS.map(function (c) {
-      var pool = Q.filter(function (q) { return q.c === c.id; }).length;
-      return "<tr><td><b>" + esc(c.name) + '</b><br><span class="small-note">' + GNAME[c.g] + '系</span></td><td class="n"><b>' + c.pred + '</b></td><td>' + esc(c.themes) + '</td><td class="n">' + pool + "</td></tr>";
-    }).join("") + '<tr><td><b>合計</b></td><td class="n"><b>' + CATS.reduce(function (a, c) { return a + c.pred; }, 0) + '</b></td><td>テクノロジ41・マネジメント7・ストラテジ12</td><td class="n">' + Q.length + "</td></tr>";
     $("a-src").innerHTML = S.sources.map(function (x) { return '<li><a href="' + esc(x.u) + '" target="_blank" rel="noopener">' + esc(x.t) + "</a></li>"; }).join("");
   }
 
@@ -695,7 +783,7 @@ td.n, th.n { text-align: right; font-family: var(--f-num); font-variant-numeric:
       var d = new Date(h.at);
       return '<tr><td class="num">' + (d.getMonth() + 1) + "/" + d.getDate() + " " + d.getHours() + ":" + ("0" + d.getMinutes()).slice(-2) +
         "</td><td>" + modeName[h.mode] + "・" + esc(h.label) + '</td><td class="n">' + h.pct + "点<br>" + h.ok + "/" + h.total + "</td></tr>";
-    }).join("") : '<tr><td colspan="3" class="empty">まだ記録がありません。ホームから模試か練習を始めると、ここに結果が残ります。</td></tr>';
+    }).join("") : '<tr><td colspan="3" class="empty">まだ記録がありません。ホームから模試か練習を始めると，ここに結果が残ります。</td></tr>';
     $("rec-cats").innerHTML = CATS.map(function (c) {
       var s = catStats(c.id);
       return "<tr><td>" + esc(c.name) + '</td><td class="n">' + s.n + '</td><td class="n">' + (s.n ? Math.round(s.ok / s.n * 100) + "%" : "—") + "</td></tr>";
