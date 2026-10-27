@@ -162,6 +162,7 @@ if (Test-Path $p) {
 async function createRestorePoint(run, description) {
   return ps(run, `
 $key = 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore'
+if (-not (Get-Command Checkpoint-Computer -ErrorAction SilentlyContinue) -or -not (Test-Path $key)) { throw 'この Windows はシステムの復元に対応していません' }
 $old = (Get-ItemProperty $key -Name SystemRestorePointCreationFrequency -ErrorAction SilentlyContinue).SystemRestorePointCreationFrequency
 New-ItemProperty $key -Name SystemRestorePointCreationFrequency -PropertyType DWord -Value 0 -Force | Out-Null
 try {

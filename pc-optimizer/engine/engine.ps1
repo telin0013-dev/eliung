@@ -83,6 +83,8 @@ function Write-Svc([string]$name, [string]$start) {
     $out = & sc.exe config $name start= $start 2>&1 | Out-String
     if ($LASTEXITCODE) { throw "sc.exe config $name が失敗しました: $($out.Trim())" }
     if ($start -eq 'disabled') { Stop-Service -Name $name -Force -ErrorAction SilentlyContinue }
+    # 自動起動に戻したときは、再起動を待たずに起動しておく（他の設定が依存することがあるため）
+    if ($start -in @('auto', 'delayed-auto')) { Start-Service -Name $name -ErrorAction SilentlyContinue }
 }
 
 function Invoke-Ps([string]$code, $backup) {

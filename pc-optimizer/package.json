@@ -25,13 +25,13 @@
     },
     "win": {
       "icon": "build/icon.png",
-      "requestedExecutionLevel": "requireAdministrator",
-      "artifactName": "${productName}-${version}-${arch}-${target}.${ext}"
+      "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "HexaTune"
+      "shortcutName": "HexaTune",
+      "artifactName": "${productName}-${version}-setup.${ext}"
     },
     "portable": {
       "artifactName": "${productName}-${version}-portable.exe"

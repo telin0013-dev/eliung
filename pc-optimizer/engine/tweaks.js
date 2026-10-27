@@ -195,8 +195,17 @@ const tweaks = [
     minRamGB: 16,
     actions: [{
       t: 'ps',
-      apply: 'Disable-MMAgent -MemoryCompression',
-      revert: 'Enable-MMAgent -MemoryCompression',
+      // MMAgent の設定は SysMain サービスが動いていないと変更できない
+      backup: '[bool](Get-MMAgent).MemoryCompression',
+      apply: `if ((Get-MMAgent).MemoryCompression) {
+  Start-Service SysMain -ErrorAction SilentlyContinue
+  try { Disable-MMAgent -MemoryCompression } catch { throw "SysMain サービスが無効になっているため変更できません。先に SysMain を有効にしてください。（$($_.Exception.Message)）" }
+}`,
+      // 適用前から無効だった場合（$backup が $false）はそのままにする
+      revert: `if ($backup -ne $false -and -not (Get-MMAgent).MemoryCompression) {
+  Start-Service SysMain -ErrorAction SilentlyContinue
+  try { Enable-MMAgent -MemoryCompression } catch { throw "SysMain サービスが無効になっているため変更できません。先に SysMain を有効にしてください。（$($_.Exception.Message)）" }
+}`,
       check: '-not (Get-MMAgent).MemoryCompression',
     }],
   },
@@ -245,8 +254,10 @@ if ($LASTEXITCODE) { throw '高パフォーマンスプランを有効にでき�
     detail: 'powercfg /hibernate off を実行します。高速スタートアップも使えなくなります。ノートPCで休止状態を使う場合はオフのままにしてください。',
     actions: [{
       t: 'ps',
-      apply: "powercfg /hibernate off | Out-Null; if ($LASTEXITCODE) { throw 'powercfg が失敗しました' }",
-      revert: 'powercfg /hibernate on | Out-Null',
+      backup: "(Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power' -Name HibernateEnabled -ErrorAction SilentlyContinue).HibernateEnabled",
+      apply: "$o = powercfg /hibernate off 2>&1 | Out-String; if ($LASTEXITCODE) { throw \"powercfg が失敗しました: $($o.Trim())\" }",
+      // 適用前から休止状態がオフだった場合は何もしない
+      revert: "if ($backup -ne 0) { $o = powercfg /hibernate on 2>&1 | Out-String; if ($LASTEXITCODE) { throw \"休止状態を有効にできませんでした: $($o.Trim())\" } }",
       check: "(Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Power' -Name HibernateEnabled -ErrorAction SilentlyContinue).HibernateEnabled -eq 0",
     }],
   },
