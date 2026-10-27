@@ -45,3 +45,7 @@ build.py                 src を1ファイルにまとめて dist/ に出力
 
 過去問を追加・修正したら `python3 tools/build_kakomon.py && python3 build.py` を実行してください。
 問題冊子 PDF と OCR テキストはリポジトリに含めていません。
+
+## PC最適化ツール（HexaTune）
+
+Windows 10 / 11 向けのPC最適化アプリ（Electron）を [pc-optimizer/](pc-optimizer/README.md) に置いています。
