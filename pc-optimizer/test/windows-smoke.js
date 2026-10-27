@@ -94,6 +94,12 @@ async function main() {
   console.log('  クリーンアップ:', scan.map((s) => `${s.id}=${s.bytes}${s.error ? '(err ' + s.error + ')' : ''}`).join(', '));
   const adapters = await tools.networkAdapters(run);
   console.log('  アダプター:', JSON.stringify(adapters));
+  const diag = await tools.diagnose(run);
+  console.log('  PCのチェック:', JSON.stringify(diag));
+  if (!diag.memory.length) fail('PCのチェック', 'メモリを読み取れない');
+  if (!diag.displays.length) fail('PCのチェック', 'ディスプレイを読み取れない');
+  for (const d of diag.displays) if (!(d.width > 0 && d.hz > 0 && d.maxHz >= d.hz)) fail('PCのチェック', 'ディスプレイの値が不正: ' + JSON.stringify(d));
+  console.log('  判定:', JSON.stringify(tools.assessDiagnosis(diag, info)));
   await tools.flushDns(run);
   console.log('  ping:', JSON.stringify(await tools.pingTest(run, '127.0.0.1')));
   await tools.gameSet(run, 'hexatune-test.exe', 'high');

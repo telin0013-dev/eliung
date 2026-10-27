@@ -456,13 +456,18 @@
           </dl>` : '<div class="muted">取得しています…</div>'}
         </div>
       </div>
+      ${diagPanel()}
       <div style="margin-top:14px">
       ${S.init.presets.map((p) => {
         const n = (S.plans && S.plans[p.id]) ? S.plans[p.id].include.length : null;
         const appliedCount = S.plans && S.plans[p.id] ? S.plans[p.id].include.filter((id) => allBackups.has(id)).length : 0;
-        return `<div class="preset">
+        const match = presetMatches(p);
+        const badgeCls = p.target ? 'dev' : p.id === 'lowlatency' ? 'latency' : 'mid';
+        const targetTag = !p.target || match === null ? ''
+          : match ? '<span class="tag ok">このPC向け</span>' : `<span class="tag na">想定: ${esc(p.target.label)}</span>`;
+        return `<div class="preset ${match ? 'recommended' : ''}">
           <div class="body">
-            <h3>${esc(p.title)}${p.badge ? `<span class="tag ${p.id === 'lowlatency' ? 'latency' : 'mid'}">${p.id === 'lowlatency' ? icon('alert', 11) : ''}${esc(p.badge)}</span>` : ''}${appliedCount ? `<span class="tag ok">${appliedCount}項目 適用中</span>` : ''}</h3>
+            <h3>${esc(p.title)}${p.badge ? `<span class="tag ${badgeCls}">${p.id === 'lowlatency' ? icon('alert', 11) : ''}${esc(p.badge)}</span>` : ''}${targetTag}${appliedCount ? `<span class="tag ok">${appliedCount}項目 適用中</span>` : ''}</h3>
             <p>${esc(p.desc)}</p>
             <div class="file">プリセット: <code>presets/${esc(p.id)}</code>${n !== null ? `<span>このPCで適用する設定: ${n} 項目</span>` : ''}</div>
           </div>
@@ -476,6 +481,40 @@
       <div class="note">${icon('info', 16)}<span class="grow">設定の適用には管理者権限が必要です。設定を適用後、最大限の効果を得るためにシステムの再起動を推奨します。</span></div>
     </div>`;
   };
+
+  // プリセットの想定構成（CPU・GPU）とこのPCが一致するか。システム情報が未取得なら null
+  function presetMatches(p) {
+    if (!p.target || !S.sys) return null;
+    return S.sys.cpu.includes(p.target.cpu) && (S.sys.gpus || []).some((g) => g.includes(p.target.gpu));
+  }
+
+  function diagPanel() {
+    const d = S.diag;
+    let body;
+    if (d === undefined || d === 'loading') body = '<div class="loading" style="padding:20px 0"><div class="spinner"></div>メモリとモニターを確認しています…</div>';
+    else if (d === null) body = '<div class="empty">チェックできませんでした</div>';
+    else {
+      const warn = d.items.some((x) => x.status === 'warn');
+      body = `<div class="list">${d.items.map((x) => `<div class="item" style="align-items:flex-start">
+          <div style="margin-top:2px;color:${x.status === 'warn' ? 'var(--warn)' : 'var(--ok)'}">${icon(x.status === 'warn' ? 'alert' : 'check', 16)}</div>
+          <div class="grow"><b>${esc(x.title)}</b>　<span class="muted">${esc(x.value)}</span>${x.advice ? `<div class="sub" style="line-height:1.6;${x.status === 'warn' ? 'color:#fde68a' : ''}">${esc(x.advice)}</div>` : ''}</div>
+        </div>`).join('')}</div>
+        ${warn ? `<div class="row" style="margin-top:10px"><button class="btn sm" data-act="open" data-target="display">ディスプレイの詳細設定を開く</button></div>` : ''}`;
+    }
+    return `<div class="panel"><div class="panel-title">${icon('activity', 16)}このPCのチェック<button class="btn sm ghost" style="margin-left:auto" data-act="diagRefresh">${icon('refresh', 13)}再チェック</button></div>${body}</div>`;
+  }
+
+  async function loadDiag() {
+    S.diag = 'loading';
+    if (S.page === 'auto') render();
+    try {
+      S.diag = await call('diagnose');
+    } catch (e) {
+      S.diag = null;
+      toast('err', 'PCのチェックに失敗しました', e.message);
+    }
+    if (S.page === 'auto') render();
+  }
 
   // ───────── 描画 ─────────
   function renderNav() {
@@ -506,6 +545,7 @@
       S.adapters = await call('netAdapters').catch(() => []);
       if (S.page === 'network') render();
     }
+    if (page === 'auto' && S.diag === undefined) loadDiag();
     if (page === 'backup' || page === 'auto') {
       S.backupData = await call('backupList').catch(() => null);
       if (page === 'auto' && !S.plans) {
@@ -651,6 +691,7 @@
     toggle: (el) => toggleTweak(el.dataset.id),
     catAll: (el) => catAll(el.dataset.cat, el.dataset.on === '1'),
     relaunch: () => call('relaunchAdmin'),
+    diagRefresh: () => loadDiag(),
     restorePoint: (el) => createRestorePoint(el),
     open: (el) => call('open', el.dataset.target).catch((e) => toast('err', '開けませんでした', e.message)),
     presetApply: (el) => presetApply(el.dataset.id),

@@ -100,8 +100,10 @@ test('プリセットは存在する設定だけを参照する', () => {
     for (const id of presetTweakIds(presets, p.id)) assert.notStrictEqual(tweaks.find((t) => t.id === id).risk, 'high', id);
   }
   // 電源プランは USB サスペンドより先に適用する（プランごとの設定のため）
-  const ll = presetTweakIds(presets, 'lowlatency');
-  assert.ok(ll.indexOf('pwr-highperf') < ll.indexOf('pwr-usbsuspend'));
+  for (const p of presets) {
+    const ids = presetTweakIds(presets, p.id);
+    if (ids.includes('pwr-usbsuspend')) assert.ok(ids.indexOf('pwr-highperf') < ids.indexOf('pwr-usbsuspend'), p.id);
+  }
 });
 
 test('SystemResponsiveness は有効な最小値の 10（10 未満は 20 扱い）', () => {
@@ -209,6 +211,7 @@ test('CPU 名から推奨プロファイルを判定する', () => {
   assert.strictEqual(cpuProfile('13th Gen Intel(R) Core(TM) i7-13700K').label, 'Intel 12世代以降向け');
   assert.strictEqual(cpuProfile('Intel(R) Core(TM) Ultra 7 155H').hybrid, true);
   assert.strictEqual(cpuProfile('AMD Ryzen 5 3400G with Radeon Vega Graphics').label, 'AMD Ryzen向け');
+  assert.strictEqual(cpuProfile('AMD Ryzen 5 5500').label, 'AMD Ryzen向け');
 });
 
 test('システムに合わない設定を外す', () => {
@@ -230,4 +233,43 @@ test('ゲームの実行ファイル名を検証する', () => {
   assert.ok(!tools.validExe('a\\b.exe'));
   assert.ok(!tools.validExe("x'; Remove-Item C:\\ .exe"));
   assert.ok(!tools.validExe('game'));
+});
+
+test('専用プリセット: 今の構成（Ryzen 5 5500 / 16GB / HDD あり）で外れる設定が無い', () => {
+  const p = presets.find((x) => x.id === 'mypc');
+  assert.ok(p.target && p.target.cpu && p.target.gpu);
+  const ids = presetTweakIds(presets, 'mypc');
+  for (const id of presetTweakIds(presets, 'lowlatency')) assert.ok(ids.includes(id), id);
+  assert.ok(ids.includes('pwr-hibernate'));
+  assert.ok(!ids.includes('svc-sysmain'), 'HDD があるので SysMain は止めない');
+  const r = filterForSystem(tweaks, ids, { profile: cpuProfile('AMD Ryzen 5 5500'), ramGB: 15.9, hasHdd: true });
+  assert.deepStrictEqual(r.skipped, []);
+});
+
+test('PCのチェック: DDR4-2666 の Ryzen 5000 はメモリ速度を警告する', () => {
+  const sys = { cpu: 'AMD Ryzen 5 5500' };
+  const mem = [{ capacityGB: 8, configured: 2666, type: 26 }, { capacityGB: 8, configured: 2666, type: 26 }];
+  const [m] = tools.assessDiagnosis({ memory: mem, displays: [] }, sys);
+  assert.strictEqual(m.status, 'warn');
+  assert.match(m.value, /DDR4-2666/);
+  // 実クロック（半分の値）で返す BIOS でも同じ判定になる
+  const half = tools.assessDiagnosis({ memory: mem.map((x) => ({ ...x, configured: 1333 })), displays: [] }, sys)[0];
+  assert.match(half.value, /DDR4-2666/);
+  const ok = tools.assessDiagnosis({ memory: mem.map((x) => ({ ...x, configured: 3200 })), displays: [] }, sys)[0];
+  assert.strictEqual(ok.status, 'ok');
+});
+
+test('PCのチェック: モニターのリフレッシュレート', () => {
+  const sys = { cpu: 'AMD Ryzen 5 5500' };
+  const disp = (name, hz, maxHz, primary = false) => ({ name, hz, maxHz, width: 1920, height: 1080, primary });
+  const a = tools.assessDiagnosis({ memory: [], displays: [
+    disp('G2422C', 180, 180, true), // 正常
+    disp('G2422C', 60, 180), // 選べるのに低いまま
+    disp('XL2420T', 60, 60), // HDMI 接続で 60Hz までしか選べない
+    disp('XL2420T', 120, 120),
+    disp('Generic PnP Monitor', 60, 60), // 型番が分からないものは選べる最大で判定
+  ] }, sys);
+  assert.deepStrictEqual(a.map((x) => x.status), ['ok', 'warn', 'warn', 'ok', 'ok']);
+  assert.match(a[0].title, /メイン/);
+  assert.match(a[2].advice, /DisplayPort か DVI-DL/);
 });

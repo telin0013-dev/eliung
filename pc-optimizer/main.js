@@ -84,12 +84,16 @@ function registerIpc() {
     version: app.getVersion(),
     categories,
     tweaks: tweaks.map(tweakMeta),
-    presets: presets.map((p) => ({ id: p.id, title: p.title, badge: p.badge, desc: p.desc })),
+    presets: presets.map((p) => ({ id: p.id, title: p.title, badge: p.badge, desc: p.desc, target: p.target || null })),
     settings: service.data.settings,
     isAdmin: await tools.isAdmin(run),
   }));
   handle('sys:info', getSysInfo);
   handle('sys:usage', () => usage());
+  handle('sys:diagnose', async () => {
+    const [diag, sys] = await Promise.all([tools.diagnose(run), getSysInfo()]);
+    return { items: tools.assessDiagnosis(diag, sys), raw: diag };
+  });
   handle('tweak:status', (ids) => service.status(ids));
   handle('tweak:apply', (id) => service.apply(id));
   handle('tweak:revert', (id) => service.revert(id));
@@ -185,6 +189,7 @@ function registerIpc() {
     services: ['mmc.exe', 'services.msc'],
     power: ['control.exe', 'powercfg.cpl'],
     graphics: ['explorer.exe', 'ms-settings:display-advancedgraphics'],
+    display: ['explorer.exe', 'ms-settings:display-advanced'],
   };
   handle('shell:open', (target) => {
     const cmd = openTargets[target];

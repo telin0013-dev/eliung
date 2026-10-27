@@ -176,7 +176,144 @@ try {
 if ($w) { "warning: $w" } else { 'ok' }`);
 }
 
+// ───────── このPCのチェック（メモリ速度・モニターのリフレッシュレート）─────────
+// モニターごとの現在の解像度・リフレッシュレートと、その解像度で選べる最大のリフレッシュレートを
+// EnumDisplaySettings で取る。PowerShell で構造体を扱うと値型のコピーで壊れやすいので、C# 側でまとめて処理する。
+const DISPLAY_CS = String.raw`
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+namespace HT {
+public class DisplayInfo { public string Device; public string Monitor; public string DeviceId; public int Width; public int Height; public int Hz; public int MaxHz; public bool Primary; }
+public static class Disp {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public struct DISPLAY_DEVICE {
+    public int cb;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceString;
+    public int StateFlags;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceID;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string DeviceKey;
+  }
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public struct DEVMODE {
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+    public short dmSpecVersion; public short dmDriverVersion; public short dmSize; public short dmDriverExtra; public int dmFields;
+    public int dmPositionX; public int dmPositionY; public int dmDisplayOrientation; public int dmDisplayFixedOutput;
+    public short dmColor; public short dmDuplex; public short dmYResolution; public short dmTTOption; public short dmCollate;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+    public short dmLogPixels; public int dmBitsPerPel; public int dmPelsWidth; public int dmPelsHeight; public int dmDisplayFlags; public int dmDisplayFrequency;
+    public int dmICMMethod; public int dmICMIntent; public int dmMediaType; public int dmDitherType; public int dmReserved1; public int dmReserved2; public int dmPanningWidth; public int dmPanningHeight;
+  }
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
+  const int ENUM_CURRENT_SETTINGS = -1;
+  const int ATTACHED_TO_DESKTOP = 1, PRIMARY_DEVICE = 4;
+  const uint EDD_GET_DEVICE_INTERFACE_NAME = 1;
+
+  static DISPLAY_DEVICE NewDevice() { var d = new DISPLAY_DEVICE(); d.cb = Marshal.SizeOf(typeof(DISPLAY_DEVICE)); return d; }
+  static DEVMODE NewMode() { var m = new DEVMODE(); m.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE)); return m; }
+
+  public static DisplayInfo[] Get() {
+    var list = new List<DisplayInfo>();
+    var dd = NewDevice();
+    for (uint i = 0; EnumDisplayDevices(null, i, ref dd, 0); i++, dd = NewDevice()) {
+      if ((dd.StateFlags & ATTACHED_TO_DESKTOP) == 0) continue;
+      var info = new DisplayInfo { Device = dd.DeviceName, Primary = (dd.StateFlags & PRIMARY_DEVICE) != 0 };
+      var cur = NewMode();
+      if (EnumDisplaySettings(dd.DeviceName, ENUM_CURRENT_SETTINGS, ref cur)) {
+        info.Width = cur.dmPelsWidth; info.Height = cur.dmPelsHeight; info.Hz = cur.dmDisplayFrequency; info.MaxHz = cur.dmDisplayFrequency;
+      }
+      var m = NewMode();
+      for (int n = 0; EnumDisplaySettings(dd.DeviceName, n, ref m); n++) {
+        if (m.dmPelsWidth == info.Width && m.dmPelsHeight == info.Height && m.dmDisplayFrequency > info.MaxHz) info.MaxHz = m.dmDisplayFrequency;
+      }
+      var mon = NewDevice();
+      if (EnumDisplayDevices(dd.DeviceName, 0, ref mon, EDD_GET_DEVICE_INTERFACE_NAME)) { info.Monitor = mon.DeviceString; info.DeviceId = mon.DeviceID; }
+      list.Add(info);
+    }
+    return list.ToArray();
+  }
+}
+}
+`;
+
+async function diagnose(run) {
+  const json = await ps(run, String.raw`
+if (-not ('HT.Disp' -as [type])) { Add-Type -TypeDefinition @'
+` + DISPLAY_CS + String.raw`
+'@ }
+# WmiMonitorID の製品名（例: G2422C）を、デバイスID の中のハードウェアID（例: MSI3CB4）で対応づける
+$names = @{}
+Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | ForEach-Object {
+  $hw = ($_.InstanceName -split '\\')[1]
+  $n = -join ($_.UserFriendlyName | Where-Object { $_ -ne 0 } | ForEach-Object { [char]$_ })
+  if ($hw -and $n) { $names[$hw] = $n }
+}
+$displays = @([HT.Disp]::Get() | ForEach-Object {
+  $hw = if ($_.DeviceId -match '#([^#]+)#') { $Matches[1] } else { '' }
+  $n = if ($names.ContainsKey($hw)) { $names[$hw] } else { $_.Monitor }
+  @{ device = $_.Device; name = $n; hardwareId = $hw; width = $_.Width; height = $_.Height; hz = $_.Hz; maxHz = $_.MaxHz; primary = $_.Primary }
+})
+$memory = @(Get-CimInstance Win32_PhysicalMemory | ForEach-Object {
+  @{ capacityGB = [math]::Round($_.Capacity / 1GB); speed = [int]$_.Speed; configured = [int]$_.ConfiguredClockSpeed; type = [int]$_.SMBIOSMemoryType; part = ([string]$_.PartNumber).Trim(); maker = ([string]$_.Manufacturer).Trim() }
+})
+@{ displays = $displays; memory = $memory } | ConvertTo-Json -Depth 4 -Compress`);
+  const d = JSON.parse(json);
+  return { displays: [].concat(d.displays || []), memory: [].concat(d.memory || []) };
+}
+
+// 型番ごとの最大リフレッシュレートと、それを出すのに必要な接続（メーカーの仕様）
+const knownMonitors = [
+  { match: /G2422C/i, maxHz: 180, note: 'MSI G2422C は DisplayPort 1.2a・HDMI 2.0b のどちらでも 180Hz。RTX 2080 で G-SYNC Compatible（可変リフレッシュレート）を使うなら DisplayPort で接続してください' },
+  { match: /XL2420T/i, maxHz: 120, note: 'BenQ XL2420T で 120Hz を出すには DisplayPort か DVI-DL で接続する必要があります（HDMI では 60Hz まで）' },
+];
+
+// チェック結果に判定とアドバイスを付ける（画面とテストの両方で使う）
+function assessDiagnosis(diag, sys) {
+  const items = [];
+  const mem = diag.memory || [];
+  if (mem.length) {
+    // DDR4 は MT/s で返るのが普通だが、半分（実クロック）で返す BIOS もあるので補正する
+    const ddr4 = mem.every((m) => m.type === 26);
+    const speeds = mem.map((m) => (ddr4 && m.configured && m.configured < 1700 ? m.configured * 2 : m.configured)).filter(Boolean);
+    const cur = speeds.length ? Math.min(...speeds) : 0;
+    const zen3 = /Ryzen [3579] 5\d{3}/i.test((sys && sys.cpu) || '');
+    const target = zen3 && ddr4 ? 3200 : 0;
+    const sizes = mem.map((m) => `${m.capacityGB}GB`).join(' + ');
+    const label = `${ddr4 ? 'DDR4-' : ''}${cur || '?'}（${sizes}）`;
+    if (target && cur && cur < target) {
+      items.push({
+        kind: 'memory', status: 'warn', title: 'メモリの速度', value: label,
+        advice: `Ryzen 5000 シリーズの公式対応は DDR4-${target} です。BIOS（OC Tweaker → DRAM Configuration）で XMP を有効にしてください。メモリ自体の定格が ${cur} の場合は XMP では上がりません（手動で上げるか、${target} のメモリに交換）。`,
+      });
+    } else {
+      items.push({ kind: 'memory', status: 'ok', title: 'メモリの速度', value: label, advice: '' });
+    }
+  }
+  for (const d of diag.displays || []) {
+    const known = knownMonitors.find((k) => k.match.test(d.name || ''));
+    const best = Math.max(d.maxHz || 0, known ? known.maxHz : 0);
+    const value = `${d.width}×${d.height} ${d.hz}Hz（この接続での最大 ${d.maxHz}Hz）`;
+    const title = `${d.name || d.device}${d.primary ? '（メイン）' : ''}`;
+    let status = 'ok';
+    let advice = '';
+    if (d.hz < d.maxHz) {
+      status = 'warn';
+      advice = `${d.maxHz}Hz まで選べるのに ${d.hz}Hz で動いています。「ディスプレイの詳細設定」でリフレッシュレートを ${d.maxHz}Hz にしてください。`;
+    } else if (known && d.maxHz < known.maxHz) {
+      status = 'warn';
+      advice = `このモニターは ${known.maxHz}Hz まで出せますが、今の接続では ${d.maxHz}Hz までしか選べません。${known.note}。`;
+    } else if (known) {
+      advice = known.note + '。';
+    }
+    items.push({ kind: 'display', status, title, value, advice, best });
+  }
+  return items;
+}
+
 module.exports = {
+  diagnose, assessDiagnosis, knownMonitors,
   isAdmin, systemInfo, cleanupTargets, cleanupScan, cleanupRun,
   dnsProviders, networkAdapters, setDns, flushDns, pingTest,
   gameList, gameSet, gameRemove, validExe, createRestorePoint,

@@ -604,6 +604,16 @@ $ifs.Count -gt 0 -and -not ($ifs | Where-Object { $_.TcpAckFrequency -ne 1 })`,
 // 自動推奨設定のプリセット。上から順に適用する。
 const presets = [
   {
+    // 島村さんの今の構成（Ryzen 5 5500 / RTX 2080 / DDR4 16GB / G2422C 180Hz + XL2420T 120Hz）向け
+    id: 'mypc',
+    title: 'My PC Tuned',
+    badge: '専用',
+    target: { cpu: 'Ryzen 5 5500', gpu: 'RTX 2080', label: 'Ryzen 5 5500 + RTX 2080' },
+    desc: 'Ryzen 5 5500 / RTX 2080 / メモリ16GB / 180Hz＋120Hz の2画面構成に合わせた設定です。Low Latency に、デスクトップでは使わない休止状態の無効化（SSDの空きが約6GB増える）、HDDへの余計な書き込みを減らす設定、検索とエラー報告の軽量化を加えています。',
+    extends: 'lowlatency',
+    tweaks: ['pwr-hibernate', 'fs-lastaccess', 'prv-websearch', 'prv-telemetry', 'sys-errorreport', 'svc-wer'],
+  },
+  {
     id: 'balanced',
     title: 'Middle Tweaks',
     badge: null,

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   init: call('app:init'),
   sysInfo: call('sys:info'),
   usage: call('sys:usage'),
+  diagnose: call('sys:diagnose'),
   status: call('tweak:status'),
   apply: call('tweak:apply'),
   revert: call('tweak:revert'),

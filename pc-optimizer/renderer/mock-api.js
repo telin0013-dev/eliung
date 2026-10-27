@@ -18,7 +18,7 @@
   const settings = { autoRestorePoint: true, showAdvanced: false };
   const sys = {
     os: 'Microsoft Windows 10 Home', version: '22H2', build: '19045.6456',
-    cpu: 'AMD Ryzen 5 3400G with Radeon Vega Graphics', cores: 4, threads: 8,
+    cpu: 'AMD Ryzen 5 5500', cores: 6, threads: 12,
     gpus: ['NVIDIA GeForce RTX 2080'], ramGB: 15.9, hasHdd: true,
     disks: [{ media: 'SSD', sizeGB: 256 }, { media: 'HDD', sizeGB: 500 }],
     profile: { id: 'amd-ryzen', label: 'AMD Ryzen向け', hybrid: false },
@@ -61,7 +61,16 @@
 
   let cpu = 18;
   window.api = {
-    init: async () => ok({ version: 'demo', categories, tweaks: tweaks.map(meta), presets: presets.map(({ id, title, badge, desc }) => ({ id, title, badge, desc })), settings, isAdmin: true }),
+    init: async () => ok({ version: 'demo', categories, tweaks: tweaks.map(meta), presets: presets.map(({ id, title, badge, desc, target }) => ({ id, title, badge, desc, target: target || null })), settings, isAdmin: true }),
+    diagnose: async () => {
+      await wait(600);
+      // XL2420T を HDMI でつないだ想定（60Hz までしか選べない）
+      return ok({ items: [
+        { kind: 'memory', status: 'warn', title: 'メモリの速度', value: 'DDR4-2666（8GB + 8GB）', advice: 'Ryzen 5000 シリーズの公式対応は DDR4-3200 です。BIOS（OC Tweaker → DRAM Configuration）で XMP を有効にしてください。メモリ自体の定格が 2666 の場合は XMP では上がりません（手動で上げるか、3200 のメモリに交換）。' },
+        { kind: 'display', status: 'ok', title: 'G2422C（メイン）', value: '1920×1080 180Hz（この接続での最大 180Hz）', advice: 'MSI G2422C は DisplayPort 1.2a・HDMI 2.0b のどちらでも 180Hz。RTX 2080 で G-SYNC Compatible（可変リフレッシュレート）を使うなら DisplayPort で接続してください。' },
+        { kind: 'display', status: 'warn', title: 'XL2420T', value: '1920×1080 60Hz（この接続での最大 60Hz）', advice: 'このモニターは 120Hz まで出せますが、今の接続では 60Hz までしか選べません。BenQ XL2420T で 120Hz を出すには DisplayPort か DVI-DL で接続する必要があります（HDMI では 60Hz まで）。' },
+      ] });
+    },
     sysInfo: async () => (await wait(400), ok(sys)),
     usage: async () => {
       cpu = Math.max(3, Math.min(95, cpu + Math.round((Math.random() - 0.5) * 14)));

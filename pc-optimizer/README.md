@@ -8,6 +8,15 @@ Windows 10 / 11 向けのPC最適化ツールです。レジストリ・サー�
 - **今の状態を読み取る**: スイッチの ON / OFF は、アプリが覚えている状態ではなく、実際のレジストリやサービスの値から判定します
 - ゲームごとのCPU優先度、DNS の切り替え、Ping テスト、一時ファイルのクリーンアップ
 
+## 島村さんのPC向け
+
+今の構成（Ryzen 5 5500 / RTX 2080 / DDR4-2666 8GB×2 / ASRock B450M Pro4 / MSI G2422C ＋ BenQ XL2420T）に合わせて、次の2つを入れています。
+
+- **My PC Tuned（専用プリセット）**: Low Latency に「休止状態の無効化」「最終アクセス日時の更新を無効化」「スタートメニュー検索のWeb結果を無効化」「テレメトリ最小」「エラー報告の無効化」を加えた 38 項目。HDD があるので SysMain は止めません。CPU と GPU が想定どおりのときは「このPC向け」と表示されます
+- **このPCのチェック**（自動推奨設定の画面）: 実機から次の値を読み取って判定します
+  - メモリの動作速度（Ryzen 5000 の公式対応 DDR4-3200 より遅ければ、BIOS の XMP を案内）
+  - モニターごとの現在のリフレッシュレートと、今の接続で選べる最大値（G2422C は 180Hz、XL2420T は DisplayPort / DVI-DL で 120Hz・HDMI では 60Hz まで）
+
 ## インストール
 
 GitHub の **Actions → HexaTune (Windows)** の最新の実行結果を開き、Artifacts の `HexaTune-windows` をダウンロードします。
@@ -26,7 +35,7 @@ GitHub の **Actions → HexaTune (Windows)** の最新の実行結果を開き�
 
 ## 設定項目
 
-M = Middle Tweaks、L = Low Latency、F = Full Performance に含まれる設定。「反映」は効果が出るタイミングです。
+M = Middle Tweaks、L = Low Latency、F = Full Performance に含まれる設定（My PC Tuned は L に 5 項目を足したもの）。「反映」は効果が出るタイミングです。
 
 **Windows設定**
 
