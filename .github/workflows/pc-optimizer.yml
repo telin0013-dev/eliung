@@ -48,9 +48,10 @@ jobs:
       - name: 画面のスモークテスト（設定は変更しない）
         shell: pwsh
         run: |
+          # CI のランナーはサービスとして動くため Chromium のサンドボックスを起動できない（CI のときだけ外す）
           New-Item -ItemType Directory -Force smoke | Out-Null
           $env:HEXATUNE_SMOKE_DIR = (Resolve-Path smoke).Path
-          $p = Start-Process -FilePath 'release\win-unpacked\HexaTune.exe' -ArgumentList '--smoke-test', '--enable-logging=stderr' -PassThru -Wait -RedirectStandardOutput smoke\stdout.txt -RedirectStandardError smoke\stderr.txt
+          $p = Start-Process -FilePath 'release\win-unpacked\HexaTune.exe' -ArgumentList '--smoke-test', '--no-sandbox', '--enable-logging=stderr' -PassThru -Wait -RedirectStandardOutput smoke\stdout.txt -RedirectStandardError smoke\stderr.txt
           Get-Content smoke\stdout.txt
           Get-Content smoke\stderr.txt -Tail 60
           if ($p.ExitCode -ne 0) { throw "スモークテスト失敗 (exit $($p.ExitCode))" }
