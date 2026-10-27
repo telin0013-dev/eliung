@@ -16,7 +16,13 @@ if (process.platform !== 'win32') {
 
 const run = createRunner();
 const failures = [];
+// 仮想マシンでは使えない機能なので、失敗しても許容するもの
+const VM_LIMITS = [['復元 pwr-hibernate', /not supported|サポートされていません/i]];
 const fail = (what, detail) => {
+  if (VM_LIMITS.some(([w, re]) => w === what && re.test(detail))) {
+    console.log(`  VM  ${what}: ${detail}（仮想マシンでは休止状態が使えないため許容）`);
+    return;
+  }
   failures.push(`${what}: ${detail}`);
   console.log(`  NG  ${what}: ${detail}`);
 };

@@ -13,6 +13,8 @@ const tools = require('./engine/tools');
 
 const run = createRunner();
 const SMOKE = process.argv.includes('--smoke-test');
+// CI の VM には GPU が無いので、スモークテストのときだけソフトウェア描画にする
+if (SMOKE) app.disableHardwareAcceleration();
 let win;
 let service;
 let sysInfoCache;
